@@ -1,4 +1,4 @@
-// ORGAN
+// INTERFERENCE
 // Created 2018 by David Herren
 // https://github.com/herdav/interference
 // Licensed under the MIT License.
