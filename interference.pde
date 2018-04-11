@@ -10,7 +10,7 @@ import  cc.arduino.*;
 Arduino arduino;
 Serial  myPort;
 String  portStream;
-boolean serial;
+boolean serial = false;
 int     posB, posC, posEnd;
 float   data_a, data_b, data_c; 
 float   store_data_a, store_data_b;
@@ -28,15 +28,24 @@ float   k = 250.0;
 
 void setup() {
   myPort = new Serial(this, "/dev/ttyACM0", 9600);
+  //myPort = new Serial(this, "COM3", 9600);
   myPort.bufferUntil('\n');
-  size(1280, 768);
-  //frameRate(120);
+  surface.setResizable(true);
+  size(1200, 1080);
+  //size(900, 450);
   //fullScreen();
+  frameRate(25);
 }
 
 void draw() {
   background(0);
-  stream();
+  if (myPort.available() > 0 && serial == false) {
+    stream();
+    serial = true;
+  }
+  if (serial == true) {
+    stream();
+  }
   regulate();
   perspect();
   projection();
@@ -54,40 +63,22 @@ void stream() {
   data_a = float(portStream.substring(1, portStream.indexOf('b')));
   data_b = float(portStream.substring(posB + 1, posC));
   data_c = float(portStream.substring(posC + 1, posEnd));
-  data_a = map(data_a, 0, 200, 0, height);
-  data_b = map(data_b, 0, 200, 0, height);
-  data_c = map(data_c, 0, 1023, 0, height);
-
+  if (data_a / 1.0 == data_a) { 
+    data_a = map(data_a, 0, 150, 0, height);
+  }
+  if (data_b / 1.0 == data_b) { 
+    data_b = map(data_b, 0, 150, 0, height);
+  }
+  if (data_c / 1.0 == data_c) { 
+    data_c = map(data_c, 0, 1023, 0, height);
+  }
+  serial = true;
   cycle = millis() - time;
   time  = millis();
-  println(cycle+"ms");
-}
-
-void perspect() {
-  k = data_c;
-  m = k / height;
-  y_ab = (data_a + data_b)/2;
-  y_k = y_ab - m * y_ab; 
-  int_y_ab = (int_a + int_b)/2;
-  int_y_k = int_y_ab - m * int_y_ab;  
-  //println(m, y_k);
+  //println(cycle+"ms");
 }
 
 void regulate() {
-  /*if (data_a > store_data_a) {
-   diff_a = data_a/store_data_a;
-   } else {
-   diff_a = store_data_a/data_a;
-   }
-   if (data_b > store_data_b) {
-   diff_b = data_b/store_data_b;
-   } else {
-   diff_b = store_data_b/data_b;
-   }
-   store_data_a = data_a;
-   store_data_b = data_b;
-   //println(diff_a, diff_b);*/
-
   int_cyc++;
   if (int_cyc == int_data_a.length) {
     int_cyc = 0;
@@ -102,6 +93,16 @@ void regulate() {
   int_a = int_a/(int_data_a.length+1);
   int_b = int_b/(int_data_b.length+1);
   //println(int_a, int_b);
+}
+
+void perspect() {
+  k = data_c;
+  m = k / height;
+  y_ab = (data_a + data_b)/2;
+  y_k = y_ab - m * y_ab; 
+  int_y_ab = (int_a + int_b)/2;
+  int_y_k = int_y_ab - m * int_y_ab;  
+  //println(m, y_k);
 }
 
 void projection() {
