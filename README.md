@@ -6,12 +6,12 @@ In physics, interference is the encounter of all kinds of waves. Light can be de
 
 The work attempts to translate incomprehensible phenomena of physics into a sensual experience.
 
-- Show video [@Vimeo](https://vimeo.com/262340615)
+- [@Vimeo](https://vimeo.com/262340615)
 
-## Exhibition view
+### Exhibition view
 
 ![capture](https://github.com/herdav/interference/blob/master/interference-exhibition.jpg)
 
-## Schematic diagram
+### Schematic diagram
 
 ![capture](https://github.com/herdav/interference/blob/master/interference-schema.jpg)
