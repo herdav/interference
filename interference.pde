@@ -9,47 +9,42 @@ import  cc.arduino.*;
 
 Arduino arduino;
 Serial  myPort;
+
 String  portStream;
-boolean serial = false;
 int     posB, posC, posEnd;
+int     maximumRange = 200;
+int     minimumRange = 0;
 float   data_a, data_b, data_c; 
 float   store_data_a, store_data_b;
 float   diff_a, diff_b;
-float[] int_data_a = new float[6];
-float[] int_data_b = new float[6];
+float[] int_data_a = new float[30];
+float[] int_data_b = new float[30];
 float   int_a, int_b;
+float   val_data_ab;
+String  data;
 int     int_cyc;
 int     time, cycle;
-String  data;
-float   val_data_ab;
-float   y_ab, y_k, m;
-float   int_y_ab, int_y_k;
-float   k = 250.0;
+float   y_ab, y_k, m, int_y_ab, int_y_k, k;
 
 void setup() {
-  myPort = new Serial(this, "/dev/ttyACM0", 9600);
-  //myPort = new Serial(this, "COM3", 9600);
+  //myPort = new Serial(this, "/dev/ttyACM0", 9600); // Port in Raspbian
+  myPort = new Serial(this, "COM3", 9600);           // Port in Windows
   myPort.bufferUntil('\n');
   surface.setResizable(true);
   size(1200, 1080);
-  //size(900, 450);
-  //fullScreen();
-  frameRate(25);
+  //frameRate(120);
+  delay(500);
 }
 
 void draw() {
   background(0);
-  if (myPort.available() > 0 && serial == false) {
-    stream();
-    serial = true;
-  }
-  if (serial == true) {
+  if (myPort.available() > 0 && portStream.charAt(0) == 'a') {
     stream();
   }
   regulate();
   perspect();
   projection();
-  test();
+  control();
 }
 
 void serialEvent(Serial myPort) {
@@ -63,19 +58,27 @@ void stream() {
   data_a = float(portStream.substring(1, portStream.indexOf('b')));
   data_b = float(portStream.substring(posB + 1, posC));
   data_c = float(portStream.substring(posC + 1, posEnd));
-  if (data_a / 1.0 == data_a) { 
-    data_a = map(data_a, 0, 150, 0, height);
+
+  println(cycle+"ms", round(frameRate)+"fps", "a:"+round(data_a), "b:"+round(data_b), "c:"+round(data_c));
+
+  if (Float.isNaN(data_a)) {
+    System.err.println("data_a : NaN");
+    data_a = minimumRange;
+  } else {
+    data_a = map(data_a, minimumRange, maximumRange, 0, height);
   }
-  if (data_b / 1.0 == data_b) { 
-    data_b = map(data_b, 0, 150, 0, height);
+  if (Float.isNaN(data_b)) {
+    System.err.println("data_b : NaN");
+    data_b = minimumRange;
+  } else {
+    data_b = map(data_b, minimumRange, maximumRange, 0, height);
   }
-  if (data_c / 1.0 == data_c) { 
+  if (Float.isNaN(data_c)) {
+    System.err.println("data_c : NaN");
+    data_c = minimumRange;
+  } else {
     data_c = map(data_c, 0, 1023, 0, height);
   }
-  serial = true;
-  cycle = millis() - time;
-  time  = millis();
-  //println(cycle+"ms");
 }
 
 void regulate() {
@@ -112,10 +115,10 @@ void projection() {
   line(width/2, height-int_y_k, width, height-int_b);
 }
 
-void test() {
+void control() {
   if (keyCode == UP) {
-    strokeWeight(1);
     stroke(0, 255, 0);
+    strokeWeight(1);
     line(0, height-data_a, width/2, height-y_k);
     line(width/2, height-y_k, width, height-data_b);
 
@@ -130,4 +133,6 @@ void test() {
     line(0, 0, width/2, k);
     line(width/2, k, width, 0);
   }
+  cycle = millis() - time;
+  time  = millis();
 }
