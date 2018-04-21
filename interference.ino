@@ -4,29 +4,25 @@
 // Licensed under the MIT License.
 // -------------------------------
 
-#define ECHO_A 8
-#define TRIG_A 9
-#define ECHO_B 10
-#define TRIG_B 11
+#define   ECHO_A 8
+#define   TRIG_A 9
+#define   ECHO_B 10
+#define   TRIG_B 11
 
-int maximumRange = 150;
-int minimumRange = 2;
-long dist_a, dist_b;
-long dura_a, dura_b;
-
+int       maximumRange = 200;
+int       minimumRange = 2;
+long      dist_a, dist_b;
+long      dura_a, dura_b;
 const int pot = A0;
-int val_pot;
-
+int       val_pot;
 const int pers = A5;
-int val_pers;
-
-int fan_pin_a = 3;
-int fan_pin_b = 5;
-int fan_a, fan_b;
-int max_top = 120;
-int data_a, data_b;
-
-String data;
+int       val_pers;
+int       fan_pin_a = 3;
+int       fan_pin_b = 5;
+int       fan_a, fan_b;
+int       max_top;
+int       data_a, data_b;
+String    data;
 
 void setup() {
   pinMode(TRIG_A, OUTPUT);
@@ -37,12 +33,21 @@ void setup() {
 }
 
 void loop() {
+  sensors();
+  control();
+  stream();
+  delay(50);
+}
+
+void control() {
   val_pot = analogRead(pot);
   if (val_pot > 0) {
     max_top = map(val_pot, 0, 1023, 0, 200);
   }
   val_pers = analogRead(pers);
-  
+}
+
+void sensors() {
   digitalWrite(TRIG_A, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_A, LOW);
@@ -86,8 +91,9 @@ void loop() {
     fan_b = 0;
   }
   analogWrite(fan_pin_b, fan_b);
+}
 
-  delay(50);
+void stream() {
   data = normalizeData(data_a, data_b, val_pers);
   Serial.println(data);
 }
