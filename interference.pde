@@ -14,11 +14,14 @@ String  portStream;
 int     posB, posC, posEnd;
 int     maximumRange = 200;
 int     minimumRange = 0;
+int     store = 20;
+int     rand = 250;
+int     line = 12;
 float   data_a, data_b, data_c; 
 float   store_data_a, store_data_b;
 float   diff_a, diff_b;
-float[] int_data_a = new float[30];
-float[] int_data_b = new float[30];
+float[] int_data_a = new float[store];
+float[] int_data_b = new float[store];
 float   int_a, int_b;
 float   val_data_ab;
 String  data;
@@ -31,8 +34,9 @@ void setup() {
   myPort = new Serial(this, "COM3", 9600);           // Port in Windows
   myPort.bufferUntil('\n');
   surface.setResizable(true);
-  size(1200, 1080);
-  //frameRate(120);
+  fullScreen();
+  //size(1200, 600);
+  frameRate(120);
   delay(500);
 }
 
@@ -109,30 +113,43 @@ void perspect() {
 }
 
 void projection() {
-  strokeWeight(12);
+  noFill();
+  strokeWeight(line);
   stroke(255);
-  line(0, height-int_a, width/2, height-int_y_k);
-  line(width/2, height-int_y_k, width, height-int_b);
+  beginShape();
+  vertex(rand, height-int_a);
+  vertex(width/2, height-int_y_k);
+  vertex(width-rand, height-int_b);
+  endShape();
+  fill(0);
+  noStroke();
+  rect(0, 0, rand + line/2, height);
+  rect(width - rand - line/2, 0, width, height);
 }
 
 void control() {
   if (keyCode == UP) {
-    stroke(0, 255, 0);
+    stroke(255, 255, 0);
     strokeWeight(1);
-    line(0, height-data_a, width/2, height-y_k);
-    line(width/2, height-y_k, width, height-data_b);
+    line(rand, height-data_a, width/2, height-y_k);
+    line(width/2, height-y_k, width-rand, height-data_b);
+    line(rand, 0, rand, height);
+    line(rand, 0, width-rand, 0);
+    line(width-rand, 0, width-rand, height);
+    line(rand, height-1, width-rand, height-1);
 
-    fill(0, 255, 0);
+    fill(255, 255, 0);
     noStroke();
-    ellipse(10, height-data_a, 20, 20);
-    ellipse(width-10, height-data_b, 20, 20);
+    ellipse(10+rand, height-data_a, 20, 20);
+    ellipse(width-10-rand, height-data_b, 20, 20);
 
     stroke(255);
     strokeWeight(1);
     line(width/2, 0, width/2, height);
-    line(0, 0, width/2, k);
-    line(width/2, k, width, 0);
+    line(rand, 0, width/2, k);
+    line(width/2, k, width-rand, 0);
   }
   cycle = millis() - time;
   time  = millis();
+  //println(cycle+"ms");
 }
