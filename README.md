@@ -7,7 +7,6 @@ In physics, interference is the encounter of all kinds of waves. Light can be de
 The work attempts to translate incomprehensible phenomena of physics into a sensual experience.
 
 - [@Vimeo](https://vimeo.com/262340615)
-- [@Network-of-Arts](https://networkofarts.com/public/artwork/286/949)
 
 ### Exhibition view
 
