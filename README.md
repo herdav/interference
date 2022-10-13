@@ -15,3 +15,15 @@ The work attempts to translate incomprehensible phenomena of physics into a sens
 ### Schematic diagram
 
 ![capture](https://github.com/herdav/interference/blob/master/interference-schema.jpg)
+
+### Circuit diagram
+
+![capture](https://github.com/herdav/interference/blob/master/interference-schematic.jpg)
+
+### PCB
+
+<img src="https://github.com/herdav/interference/blob/master/interference-pcb.jpg" width="500" height="auto">
+
+### Breadboard
+
+<img src="https://github.com/herdav/interference/blob/master/interference-breadboard.jpg" width="500" height="auto">
