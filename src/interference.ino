@@ -21,18 +21,26 @@ int minimumRange = 2;
 long dist_a, dist_b;
 long dura_a, dura_b;
 
-const int def_max_heigh = A0;    // define max heigh
-const int def_perspective = A1;  // perspective
-const int pot_A2 = A2;           // potentiometer 3
-const int pot_A3 = A3;           // potentiometer 4
+const int def_max_heigh = A0;    // potentiometer 0 > define max heigh for stop motors
+const int def_perspective = A1;  // potentiometer 1 > define perspective for graphic
+const int pot_A2 = A2;           // potentiometer 2 > 
+const int pot_A3 = A3;           // potentiometer 3 > define run time
 
-int val_def_perspective;         // data_c
-int val_def_max_heigh;           
+int val_def_max_heigh;     
+int val_def_perspective;         // data_c      
 int val_pot_A2;                  // data_e
 int val_pot_A3;                  // data_f
 
 bool val_on;                     // data_g
 bool val_run;                    // data_h
+
+long val_time_run;
+long time_run_max = 60000;         // time in s
+long val_time_pause;
+long val_time_pause_max = 60000;   // time in s
+bool time_run = true;
+long time;
+long time_safed = 0;
 
 int val_fan_a, val_fan_b;
 
@@ -64,28 +72,48 @@ void loop() {
 }
 
 void control() {
-  val_def_max_heigh = analogRead(def_max_heigh);
-  if (val_def_max_heigh > 0) {
-    max_top = map(val_def_max_heigh, 0, 1023, 0, 200);
+  { // define max heigh
+    val_def_max_heigh = analogRead(def_max_heigh);
+    if (val_def_max_heigh > 0) {
+      max_top = map(val_def_max_heigh, 0, 1023, 0, 200);
+    }
   }
+  { // define value for perspective
+    val_def_perspective = analogRead(def_perspective);
+  }
+  { // define timeautomat
+    time = millis();
+    val_pot_A3 = analogRead(pot_A3);
+    val_time_run = map(val_pot_A3, 0, 1023, 0, time_run_max);
 
-  val_def_perspective = analogRead(def_perspective);
+    val_time_pause = val_time_run;
 
+    if (time - time_safed >= val_time_run && time_run == true) {      
+      time_run = false;
+      time_safed = time;
+    }
+    if (time - time_safed >= val_time_pause && time_run == false) {
+      time_run = true;
+      time_safed = time;
+    }
+  }
+  {
   //val_pot_A2 = analogRead(pot_A2);
-  val_pot_A3 = analogRead(pot_A3);
-
-  val_on = digitalRead(ON);
-  val_run = digitalRead(RUN);
-  
-  if (val_on == true) {
-    digitalWrite(LED_ON, HIGH);
-  } else {
-    digitalWrite(LED_ON, LOW);
   }
-  if (val_run == true) {
-    digitalWrite(LED_RUN, HIGH);
-  } else {
-    digitalWrite(LED_RUN, LOW);
+  { // togle switch
+    val_on = digitalRead(ON);
+    val_run = digitalRead(RUN);
+    
+    if (val_on == true) {
+      digitalWrite(LED_ON, HIGH);
+    } else {
+      digitalWrite(LED_ON, LOW);
+    }
+    if (val_run == true) {
+      digitalWrite(LED_RUN, HIGH);
+    } else {
+      digitalWrite(LED_RUN, LOW);
+    }
   }
 }
 
@@ -134,7 +162,7 @@ void sensors() {
 }
 
 void actors() {
-  if (val_run == true) {
+  if (val_run == true && (time_run == true || val_time_run <= 0)) {
     analogWrite(FAN_A, val_fan_a);
     analogWrite(FAN_B, val_fan_b);
   } else {
@@ -144,11 +172,11 @@ void actors() {
 }
 
 void stream() {
-  data = normalizeData(data_a, data_b, val_def_perspective, max_top, val_pot_A2, val_pot_A3, val_on, val_run);
+  data = normalizeData(data_a, data_b, val_def_perspective, max_top, val_pot_A2, val_time_run, val_on, val_run);
   Serial.println(data);
 }
 
-String normalizeData(int a, int b, int c, int d, int e, int f, bool g, bool h) {
+String normalizeData(int a, int b, int c, int d, int e, long f, bool g, bool h) {
   String A = String(a);
   String B = String(b);
   String C = String(c);
