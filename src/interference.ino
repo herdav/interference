@@ -16,32 +16,39 @@
 #define LED_ON 2
 #define LED_RUN 12
 
+const int def_max_top = A0;       // potentiometer 0 -> define max top for stop motors
+const int def_perspective = A2;   // potentiometer 3 -> define perspective for graphic
+const int def_power = A1;         // potentiometer 1 -> define power motors
+const int def_runtime = A3;       // potentiometer 2 -> define run time
+
 int maximumRange = 200;
 int minimumRange = 2;
 long dist_a, dist_b;
 long dura_a, dura_b;
-const int def_max_top = A0;       // potentiometer 0 > define max top for stop motors
-const int def_perspective = A2;   // potentiometer 3 > define perspective for graphic
-const int def_power = A1;         // potentiometer 1 > define power motors
-const int def_runtime = A3;       // potentiometer 2 > define run time
+int data_dist_a;                  // data_a
+int data_dist_b;                  // data_b
+int val_fan_a, val_fan_b;
+int max_top;                      // data_d
 int val_def_max_top;
+
 int val_def_perspective;          // data_c
 int val_def_power;                
 int val_power;                    // data_e
 int val_def_runtime;             
-bool val_on;                      // data_g
-bool val_run;                     // data_h
+bool val_on;                      // data_h
+bool val_on_safed;
+bool val_run;                     // data_i
 long val_time_run;                // data_f
-long time_run_max = 300000;       // time in s
+long time_run_max = 300000;
 long val_time_pause;
-long val_time_pause_max = 300000; // time in s
-bool time_run = true;
+long val_time_pause_max = 300000;
+bool time_run = true;             // data j
 long time;
 long time_safed = 0;
-int val_fan_a, val_fan_b;
-int max_top;                      // data_d
-int data_dist_a;                  // data_a
-int data_dist_b;                  // data_b
+long time_left;                   // data_g -> time until toggle run or pause
+bool toggled_on_run;
+
+
 
 String data; // (data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run);
 
@@ -83,11 +90,16 @@ void control() {
 
     val_time_pause = val_time_run; // run time = pause time
 
-    if (time - time_safed >= val_time_run && time_run == true) {
+    time_left = time - time_safed;
+    if (val_on == true && val_run == false) {
+      time_left = 0;      
+    }    
+
+    if ((time - time_safed >= val_time_run && time_run == true) || val_on == true && val_run == false) {
       time_run = false;
       time_safed = time;
     }
-    if (time - time_safed >= val_time_pause && time_run == false) {
+    if ((time - time_safed >= val_time_pause && time_run == false) || toggled_on_run == true ) {
       time_run = true;
       time_safed = time;
     }
@@ -110,6 +122,13 @@ void control() {
     } else {
       digitalWrite(LED_RUN, LOW);
     }
+       
+    if (val_on_safed == true && val_run == true) {
+      toggled_on_run = true;            
+    } else {
+      toggled_on_run = false;
+    }
+    val_on_safed = val_on;
   }
 }
 
@@ -185,11 +204,11 @@ void actors() {
 }
 
 void stream() {
-  data = normalizeData(data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run);
+  data = normalizeData(data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, time_left, val_on, val_run, time_run);
   Serial.println(data);
 }
 
-String normalizeData(int a, int b, int c, int d, int e, long f, bool g, bool h) {
+String normalizeData(int a, int b, int c, int d, int e, long f, long g, bool h, bool i, bool j) {
   String A = String(a);
   String B = String(b);
   String C = String(c);
@@ -198,6 +217,8 @@ String normalizeData(int a, int b, int c, int d, int e, long f, bool g, bool h) 
   String F = String(f);
   String G = String(g);
   String H = String(h);
-  String ret = String('a') + A + String('b') + B + String('c') + C + String('d') + D + String('e') + E + String('f') + F + String('g') + G + String('h') + H + String('#');
+  String I = String(i);
+  String J = String(j);
+  String ret = String('a') + A + String('b') + B + String('c') + C + String('d') + D + String('e') + E + String('f') + F + String('g') + G + String('h') + H + String('i') + I + String('j') + J + String('#');
   return ret;
 }
