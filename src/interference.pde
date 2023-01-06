@@ -12,13 +12,13 @@ Arduino arduino;
 Serial  myPort;
 
 String  portStream;
-int     posB, posC, posD, posE, posF, posG, posH, posEnd;
+int     posB, posC, posD, posE, posF, posG, posH, posI, posJ, posEnd;
 int     maximumRange = 200;
 int     minimumRange = 0;
 int     store = 20;
 int     rand = 0; // 250
 int     line = 12;
-float   data_a, data_b, data_c, data_d, data_e, data_f, data_g, data_h;
+float   data_a, data_b, data_c, data_d, data_e, data_f, data_g, data_h, data_i, data_j;
 float   store_data_a, store_data_b;
 float   diff_a, diff_b;
 float[] int_data_a = new float[store];
@@ -40,15 +40,14 @@ void setup() {
   //fullScreen();
   size(1920, 1080);
   frameRate(120);
-  delay(500);
+  delay(2000);
 }
 
 void draw() {
   background(0);
-  /*if (myPort.available() > 0 && portStream.charAt(0) == 'a') {
+  if (myPort.available() > 0 && portStream.charAt(0) == 'a') {
     stream();
-  }*/
-  stream();
+  }
   regulate();
   perspect();
   projection();
@@ -67,35 +66,41 @@ void stream() {
   posF = portStream.indexOf('f');
   posG = portStream.indexOf('g');
   posH = portStream.indexOf('h');
+  posI = portStream.indexOf('i');
+  posJ = portStream.indexOf('j');
   posEnd = portStream.indexOf('#');
   data_a = float(portStream.substring(1, posB));          // sensor A
   data_b = float(portStream.substring(posB + 1, posC));   // sensor B
-  data_c = float(portStream.substring(posC + 1, posD));   // perspective
-  data_d = float(portStream.substring(posD + 1, posE));   // 
-  data_e = float(portStream.substring(posE + 1, posF));   // 
-  data_f = float(portStream.substring(posF + 1, posG));   // 
-  data_g = float(portStream.substring(posG + 1, posH));   // 
-  data_h = float(portStream.substring(posH + 1, posEnd)); //
+  data_c = float(portStream.substring(posC + 1, posD));   // set perspective
+  data_d = float(portStream.substring(posD + 1, posE));   // set max top
+  data_e = float(portStream.substring(posE + 1, posF));   // set motor power
+  data_f = float(portStream.substring(posF + 1, posG));   // set time run and pause
+  data_g = float(portStream.substring(posG + 1, posH));   // time left
+  data_h = float(portStream.substring(posH + 1, posI));   // toggle on
+  data_i = float(portStream.substring(posI + 1, posJ));   // toggle on
+  data_j = float(portStream.substring(posJ + 1, posEnd)); // time run or pause
 
-  println(cycle + "ms", round(frameRate) + "fps", "a:" + round(data_a), "b:" + round(data_b), "c:" + round(data_c), "d:" + round(data_d), "e:" + round(data_e), "f:" + round(data_f), "g:" + round(data_g), "h:" + round(data_h));
+  println(cycle + "ms", round(frameRate) + "fps", "a:" + round(data_a), "b:" + round(data_b), "c:" + round(data_c), "d:" + round(data_d), "e:" + round(data_e), "f:" + round(data_f), "g:" + round(data_g), "h:" + round(data_h), "i:" + round(data_i), "j:" + round(data_j));
 
-  if (Float.isNaN(data_a)) {
-    System.err.println("data_a : NaN");
-    data_a = minimumRange;
-  } else {
-    data_a = map(data_a, minimumRange, maximumRange, 0, height);
-  }
-  if (Float.isNaN(data_b)) {
-    System.err.println("data_b : NaN");
-    data_b = minimumRange;
-  } else {
-    data_b = map(data_b, minimumRange, maximumRange, 0, height);
-  }
-  if (Float.isNaN(data_c)) {
-    System.err.println("data_c : NaN");
-    data_c = minimumRange;
-  } else {
-    data_c = map(data_c, 0, 1023, 0, height);
+  { // clean data
+    if (Float.isNaN(data_a)) {
+      System.err.println("data_a : NaN");
+      data_a = minimumRange;
+    } else {
+      data_a = map(data_a, minimumRange, maximumRange, 0, height);
+    }
+    if (Float.isNaN(data_b)) {
+      System.err.println("data_b : NaN");
+      data_b = minimumRange;
+    } else {
+      data_b = map(data_b, minimumRange, maximumRange, 0, height);
+    }
+    if (Float.isNaN(data_c)) {
+      System.err.println("data_c : NaN");
+      data_c = minimumRange;
+    } else {
+      data_c = map(data_c, 0, 1023, 0, height);
+    }
   }
 }
 
@@ -142,19 +147,19 @@ void projection() {
 }
 
 void control() {
-  if (int(data_g) > 0) {
+  if (int(data_h) > 0) {
     on = true;
   } else {
     on = false;
   }
-  if (int(data_h) > 0) {
+  if (int(data_i) > 0) {
     run = true;
   } else {
     run = false;
   }
 
   if (keyCode == UP || (on && !run)) {
-    {
+    { // draw help lines
       stroke(255, 255, 0);
       strokeWeight(1);
       line(rand, height - data_a, width / 2, height - y_k);
@@ -175,17 +180,22 @@ void control() {
       line(rand, 0, width / 2, k);
       line(width / 2, k, width - rand, 0);
     }
-    {
-      // (data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run);
+    { // show stream data
+      // data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, time_left, val_on, val_run, time_run
+      fill(255, 255, 255);
       textSize(30);
-      text("Sensor A: " + round(data_a) + "px", 40, 120);
-      text("Sensor B: " + round(data_b) +"px", 40, 180);
+      text("Sensor A: " + round(data_a) + "/" + height + "px", 40, 120);
+      text("Sensor B: " + round(data_b) + "/" + height + "px", 40, 180);
       text("Perspective: " + round(data_c), 40, 240);
-      text("Max Top: "   + round(data_d), 40, 300);
-      text("Power:" + round(data_e), 40, 360);
-      text("RUN Time: " + round(data_f / 1000) + "s", 40, 420);
-      text("ON: " + round(data_g), 40, 480);
-      text("RUN: " + round(data_h), 40, 540);
+      text("Max Top: " + round(data_d) + "/200", 40, 300);
+      text("Power: " + round(data_e) + "/255", 40, 360);
+      text("Run Time Set: " + round(data_f / 1000) + "s", 40, 420);
+      text("Run Time Left: " + round(data_g / 1000) + "s", 40, 480);
+      if (data_j == 1) {fill(0,255,0); text("[runs]", 320, 480);}
+      else {fill(255,0,0); text("[paused]", 320, 480);}
+      fill(255,255,255);
+      if (data_h == 1) {text("Toggle: On", 40, 540);}
+      else if (data_i == 1) {text("Toggle: Run", 40, 540);}
       text(cycle + "ms " + round(frameRate) + "fps", 40, 600);
     }
   }
