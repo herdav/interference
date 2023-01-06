@@ -20,35 +20,30 @@ int maximumRange = 200;
 int minimumRange = 2;
 long dist_a, dist_b;
 long dura_a, dura_b;
-
-const int def_max_heigh = A0;    // potentiometer 0 > define max heigh for stop motors
-const int def_perspective = A1;  // potentiometer 1 > define perspective for graphic
-const int pot_A2 = A2;           // potentiometer 2 > 
-const int pot_A3 = A3;           // potentiometer 3 > define run time
-
-int val_def_max_heigh;     
-int val_def_perspective;         // data_c      
-int val_pot_A2;                  // data_e
-int val_pot_A3;                  // data_f
-
-bool val_on;                     // data_g
-bool val_run;                    // data_h
-
-long val_time_run;
-long time_run_max = 60000;         // time in s
+const int def_max_top = A0;       // potentiometer 0 > define max top for stop motors
+const int def_perspective = A2;   // potentiometer 3 > define perspective for graphic
+const int def_power = A1;         // potentiometer 1 > define power motors
+const int def_runtime = A3;       // potentiometer 2 > define run time
+int val_def_max_top;
+int val_def_perspective;          // data_c
+int val_def_power;                
+int val_power;                    // data_e
+int val_def_runtime;             
+bool val_on;                      // data_g
+bool val_run;                     // data_h
+long val_time_run;                // data_f
+long time_run_max = 300000;       // time in s
 long val_time_pause;
-long val_time_pause_max = 60000;   // time in s
+long val_time_pause_max = 300000; // time in s
 bool time_run = true;
 long time;
 long time_safed = 0;
-
 int val_fan_a, val_fan_b;
+int max_top;                      // data_d
+int data_dist_a;                  // data_a
+int data_dist_b;                  // data_b
 
-int max_top;                     // data_d
-
-int data_a, data_b;
-
-String data;
+String data; // (data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run);
 
 void setup() {
   pinMode(TRIG_A, OUTPUT);
@@ -72,23 +67,23 @@ void loop() {
 }
 
 void control() {
-  { // define max heigh
-    val_def_max_heigh = analogRead(def_max_heigh);
-    if (val_def_max_heigh > 0) {
-      max_top = map(val_def_max_heigh, 0, 1023, 0, 200);
+  {  // define max top
+    val_def_max_top = analogRead(def_max_top);
+    if (val_def_max_top > 0) {
+      max_top = map(val_def_max_top, 0, 1023, 0, 200);
     }
   }
-  { // define value for perspective
+  {  // define value for perspective
     val_def_perspective = analogRead(def_perspective);
   }
-  { // define timeautomat
+  {  // define timeautomat
     time = millis();
-    val_pot_A3 = analogRead(pot_A3);
-    val_time_run = map(val_pot_A3, 0, 1023, 0, time_run_max);
+    val_def_runtime = analogRead(def_runtime);
+    val_time_run = map(val_def_runtime, 0, 1023, 0, time_run_max);
 
-    val_time_pause = val_time_run;
+    val_time_pause = val_time_run; // run time = pause time
 
-    if (time - time_safed >= val_time_run && time_run == true) {      
+    if (time - time_safed >= val_time_run && time_run == true) {
       time_run = false;
       time_safed = time;
     }
@@ -97,13 +92,14 @@ void control() {
       time_safed = time;
     }
   }
-  {
-  //val_pot_A2 = analogRead(pot_A2);
+  { // power motors
+    val_def_power = analogRead(def_power);
+    val_power = map(val_def_power, 0, 1023, 0, 255);
   }
-  { // togle switch
+  {  // togle switch
     val_on = digitalRead(ON);
     val_run = digitalRead(RUN);
-    
+
     if (val_on == true) {
       digitalWrite(LED_ON, HIGH);
     } else {
@@ -118,25 +114,19 @@ void control() {
 }
 
 void sensors() {
-    digitalWrite(TRIG_A, HIGH);
-    delayMicroseconds(10);
-    digitalWrite(TRIG_A, LOW);
-    dura_a = pulseIn(ECHO_A, HIGH);
-    dist_a = dura_a / 58.2;
-  
+  digitalWrite(TRIG_A, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_A, LOW);
+  dura_a = pulseIn(ECHO_A, HIGH);
+  dist_a = dura_a / 58.2;
+
   if (dist_a >= maximumRange) {
     dist_a = maximumRange;
   }
   if (dist_a <= minimumRange) {
     dist_a = 0;
   } else {
-    data_a = dist_a;
-  }
-  if (data_a <= max_top && val_def_max_heigh > 0) {
-    val_fan_a = map(data_a, 0, max_top, 255, 220);
-  }
-  if (data_a > max_top || val_def_max_heigh == 0) {
-    val_fan_a = 0;
+    data_dist_a = dist_a;
   }
 
   digitalWrite(TRIG_B, HIGH);
@@ -151,17 +141,40 @@ void sensors() {
   if (dist_b <= minimumRange) {
     dist_b = 0;
   } else {
-    data_b = dist_b;
-  }
-  if (data_b <= max_top && val_def_max_heigh > 0) {
-    val_fan_b = map(data_b, 0, max_top, 255, 220);
-  }
-  if (data_b > max_top || val_def_max_heigh == 0) {
-    val_fan_b = 0;
+    data_dist_b = dist_b;
   }
 }
 
 void actors() {
+  
+  {
+    if (dist_a < max_top) {
+      val_fan_a = val_power;
+    } else {
+      val_fan_a = 0;
+    }
+    if (dist_b < max_top) {
+      val_fan_b = val_power;
+    } else {
+      val_fan_b = 0;
+    }
+  }
+
+  /*{
+    if (data_dist_a <= max_top && val_def_max_top > 0) {
+        val_fan_a = map(data_dist_a, 0, max_top, 255, val_power);
+      }
+      if (data_dist_a > max_top || val_def_max_top == 0) {
+        val_fan_a = 0;
+      }
+      if (data_dist_b <= max_top && val_def_max_top > 0) {
+        val_fan_b = map(data_dist_b, 0, max_top, 255, val_power);
+      }
+      if (data_dist_b > max_top || val_def_max_top == 0) {
+        val_fan_b = 0;
+      }
+  }*/
+
   if (val_run == true && (time_run == true || val_time_run <= 0)) {
     analogWrite(FAN_A, val_fan_a);
     analogWrite(FAN_B, val_fan_b);
@@ -172,7 +185,7 @@ void actors() {
 }
 
 void stream() {
-  data = normalizeData(data_a, data_b, val_def_perspective, max_top, val_pot_A2, val_time_run, val_on, val_run);
+  data = normalizeData(data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run);
   Serial.println(data);
 }
 
