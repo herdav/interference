@@ -45,9 +45,10 @@ void setup() {
 
 void draw() {
   background(0);
-  if (myPort.available() > 0 && portStream.charAt(0) == 'a') {
+  /*if (myPort.available() > 0 && portStream.charAt(0) == 'a') {
     stream();
-  }
+  }*/
+  stream();
   regulate();
   perspect();
   projection();
@@ -153,25 +154,40 @@ void control() {
   }
 
   if (keyCode == UP || (on && !run)) {
-    stroke(255, 255, 0);
-    strokeWeight(1);
-    line(rand, height - data_a, width / 2, height - y_k);
-    line(width / 2, height - y_k, width - rand, height - data_b);
-    line(rand, 0, rand, height);
-    line(rand, 0, width - rand, 0);
-    line(width - rand, 0, width - rand, height);
-    line(rand, height - 1, width - rand, height - 1);
+    {
+      stroke(255, 255, 0);
+      strokeWeight(1);
+      line(rand, height - data_a, width / 2, height - y_k);
+      line(width / 2, height - y_k, width - rand, height - data_b);
+      line(rand, 0, rand, height);
+      line(rand, 0, width - rand, 0);
+      line(width - rand, 0, width - rand, height);
+      line(rand, height - 1, width - rand, height - 1);
 
-    fill(255, 255, 0);
-    noStroke();
-    ellipse(10 + rand, height - data_a, 20, 20);
-    ellipse(width - 10 - rand, height - data_b, 20, 20);
+      fill(255, 255, 0);
+      noStroke();
+      ellipse(10 + rand, height - data_a, 20, 20);
+      ellipse(width - 10 - rand, height - data_b, 20, 20);
 
-    stroke(255);
-    strokeWeight(1);
-    line(width / 2, 0, width / 2, height);
-    line(rand, 0, width / 2, k);
-    line(width / 2, k, width - rand, 0);
+      stroke(255);
+      strokeWeight(1);
+      line(width / 2, 0, width / 2, height);
+      line(rand, 0, width / 2, k);
+      line(width / 2, k, width - rand, 0);
+    }
+    {
+      // (data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run);
+      textSize(30);
+      text("Sensor A: " + round(data_a) + "px", 40, 120);
+      text("Sensor B: " + round(data_b) +"px", 40, 180);
+      text("Perspective: " + round(data_c), 40, 240);
+      text("Max Top: "   + round(data_d), 40, 300);
+      text("Power:" + round(data_e), 40, 360);
+      text("RUN Time: " + round(data_f / 1000) + "s", 40, 420);
+      text("ON: " + round(data_g), 40, 480);
+      text("RUN: " + round(data_h), 40, 540);
+      text(cycle + "ms " + round(frameRate) + "fps", 40, 600);
+    }
   }
   cycle = millis() - time;
   time  = millis();
