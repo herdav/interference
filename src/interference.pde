@@ -28,7 +28,7 @@ float   val_data_ab;
 String  data;
 int     int_cyc;
 int     time, cycle;
-float   y_ab, y_k, m, int_y_ab, int_y_k, k;
+float   y_ab, y_k, m, int_y_ab, int_y_k, k, int_x;
 boolean on;
 boolean run;
 
@@ -135,11 +135,19 @@ void projection() {
   noFill();
   strokeWeight(line);
   stroke(255);
-  beginShape();
-  vertex(rand, height - int_a);
-  vertex(width / 2, height - int_y_k);
-  vertex(width - rand, height - int_b);
-  endShape();
+
+  if (data_j == 1) {
+    beginShape();
+    vertex(rand, height - int_a);
+    vertex(width / 2, height - int_y_k);
+    vertex(width - rand, height - int_b);
+    endShape();
+  } else if (data_j == 0) {
+    int_x = map(data_g, 0, data_f, 0, width / 2);
+    line(width / 2, height - 50, width / 2 - int(int_x), height - 50);
+    line(width / 2, height - 50, width / 2 + int(int_x), height - 50);
+  }
+
   fill(0);
   noStroke();
   rect(0, 0, rand + line / 2, height);
