@@ -5,6 +5,8 @@
 // Licensed under the MIT License.
 // --------------------------------------
 
+#include <Filter.h> // megunolink.com
+
 #define ECHO_A 8
 #define TRIG_A 9
 #define ECHO_B 10
@@ -16,17 +18,23 @@
 #define LED_ON 2
 #define LED_RUN 12
 
+long filterWeight = 100; // 100%
+ExponentialFilter<long> ADCFilter(filterWeight, 0); // (weight, initial value)
+bool filterADC = true;
+bool filterSpike = true;
+
 const int def_max_top = A0;       // potentiometer 0 -> define max top for stop motors
 const int def_perspective = A2;   // potentiometer 3 -> define perspective for graphic
 const int def_power = A1;         // potentiometer 1 -> define power motors
-const int def_runtime = A3;       // potentiometer 2 -> define run time
+const int def_runtime = A3;       // potentiometer 2 -> define run time_current
 
 int maximumRange = 200;
-int minimumRange = 2;
-long dist_a, dist_b;
-long dura_a, dura_b;
+int minimumRange = 2;             // 2
+float dist_a, dist_b;
+float dura_a, dura_b;
 int data_dist_a;                  // data_a
 int data_dist_b;                  // data_b
+
 int val_fan_a, val_fan_b;
 int max_top;                      // data_d
 int val_def_max_top;
@@ -43,14 +51,55 @@ long time_run_max = 300000;
 long val_time_pause;
 long val_time_pause_max = 300000;
 bool time_run = true;             // data j
-long time;
+long time_current;
 long time_safed = 0;
-long time_left;                   // data_g -> time until toggle run or pause
-bool toggled_on_run;
+long time_left;                   // data_g -> time_current until toggle run or pause
+bool toggled_on_run = false;
 
+String data; // (data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run)
 
+class spikeFilter {
+  private:
+  float setMax, dataOut, dataBefore, deltaData;
+  int cntBefore;
+  int cntBeforeSet = 2;
+  int cntPause;
+  int cntPauseSet = 6;
+  bool pause = false;  
+    
+  public:
+  spikeFilter(float setMax) {
+    this->setMax = setMax;
+  }
+  float getData() {
+    return dataOut;
+  }
+  
+  void filter(float dataIn) {
+    deltaData = abs(dataIn - dataBefore);    
+    if (deltaData > setMax && cntBefore <= cntBeforeSet && !pause) {      
+      dataOut = dataBefore;
+      cntBefore++;
+      //Serial.print(">>");
+    } else {
+      dataOut = dataIn;
+      dataBefore = dataIn;        
+    }
+    if (cntBefore == cntBeforeSet) {
+      cntPause++;
+      pause = true;
+    }
+    if (cntPause == cntBeforeSet) {
+      pause = false;
+      cntPause = 0;
+      cntBefore = 0;      
+    }               
+  }      
+};
 
-String data; // (data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, val_on, val_run);
+float setMax = 10;
+spikeFilter spikeFilterA = spikeFilter(setMax);
+spikeFilter spikeFilterB = spikeFilter(setMax);
 
 void setup() {
   pinMode(TRIG_A, OUTPUT);
@@ -70,45 +119,45 @@ void loop() {
   actors();
   control();
   stream();
-  delay(50);
+  delay(50); // 50
 }
 
 void control() {
-  {  // define max top
+  { // max top
     val_def_max_top = analogRead(def_max_top);
     if (val_def_max_top > 0) {
       max_top = map(val_def_max_top, 0, 1023, 0, 200);
     }
   }
-  {  // define value for perspective
+  { // value for perspective
     val_def_perspective = analogRead(def_perspective);
   }
-  {  // define timeautomat
-    time = millis();
+  { // timeautomat
+    time_current = millis();
     val_def_runtime = analogRead(def_runtime);
     val_time_run = map(val_def_runtime, 0, 1023, 0, time_run_max);
 
-    val_time_pause = val_time_run; // run time = pause time
+    val_time_pause = val_time_run; // run time_current = pause time_current
 
-    time_left = time - time_safed;
+    time_left = time_current - time_safed;
     if (val_on == true && val_run == false) {
       time_left = 0;      
     }    
 
-    if ((time - time_safed >= val_time_run && time_run == true) || val_on == true && val_run == false) {
+    if ((time_current - time_safed >= val_time_run && time_run == true) || val_on == true && val_run == false) {
       time_run = false;
-      time_safed = time;
+      time_safed = time_current;
     }
-    if ((time - time_safed >= val_time_pause && time_run == false) || toggled_on_run == true ) {
+    if ((time_current - time_safed >= val_time_pause && time_run == false) || toggled_on_run == true ) {
       time_run = true;
-      time_safed = time;
+      time_safed = time_current;
     }
   }
   { // power motors
     val_def_power = analogRead(def_power);
     val_power = map(val_def_power, 0, 1023, 0, 255);
   }
-  {  // togle switch
+  { // togle switch
     val_on = digitalRead(ON);
     val_run = digitalRead(RUN);
 
@@ -146,6 +195,8 @@ void sensors() {
     dist_a = 0;
   } else {
     data_dist_a = dist_a;
+    if (filterSpike){spikeFilterA.filter(data_dist_a); data_dist_a = spikeFilterA.getData();}
+    if (filterADC){ADCFilter.Filter(data_dist_a);}
   }
 
   digitalWrite(TRIG_B, HIGH);
@@ -161,11 +212,27 @@ void sensors() {
     dist_b = 0;
   } else {
     data_dist_b = dist_b;
+    if (filterSpike){spikeFilterB.filter(data_dist_b); data_dist_b = spikeFilterB.getData();}
+    if (filterADC){ADCFilter.Filter(data_dist_b);}
   }
 }
 
 void actors() {
-  
+  { // power motor depends to distance
+    if (data_dist_a <= max_top && val_def_max_top > 0) {
+      val_fan_a = map(data_dist_a, 0, max_top, 255, val_power);
+      }
+    if (data_dist_a > max_top || val_def_max_top == 0) {
+        val_fan_a = 0;
+    }
+    if (data_dist_b <= max_top && val_def_max_top > 0) {
+        val_fan_b = map(data_dist_b, 0, max_top, 255, val_power);
+    }
+    if (data_dist_b > max_top || val_def_max_top == 0) {
+        val_fan_b = 0;
+    }
+  }
+  /*// on off motor
   {
     if (dist_a < max_top) {
       val_fan_a = val_power;
@@ -177,22 +244,7 @@ void actors() {
     } else {
       val_fan_b = 0;
     }
-  }
-
-  /*{
-    if (data_dist_a <= max_top && val_def_max_top > 0) {
-        val_fan_a = map(data_dist_a, 0, max_top, 255, val_power);
-      }
-      if (data_dist_a > max_top || val_def_max_top == 0) {
-        val_fan_a = 0;
-      }
-      if (data_dist_b <= max_top && val_def_max_top > 0) {
-        val_fan_b = map(data_dist_b, 0, max_top, 255, val_power);
-      }
-      if (data_dist_b > max_top || val_def_max_top == 0) {
-        val_fan_b = 0;
-      }
-  }*/
+  }*/  
 
   if (val_run == true && (time_run == true || val_time_run <= 0)) {
     analogWrite(FAN_A, val_fan_a);
@@ -203,7 +255,7 @@ void actors() {
   }
 }
 
-void stream() {
+void stream() {    
   data = normalizeData(data_dist_a, data_dist_b, val_def_perspective, max_top, val_power, val_time_run, time_left, val_on, val_run, time_run);
   Serial.println(data);
 }
