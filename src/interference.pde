@@ -7,36 +7,43 @@
 
 import  processing.serial.*;
 import  cc.arduino.*;
+import  signal.library.*;
 
-Arduino arduino;
 Serial  myPort;
-
+Arduino arduino;
 String  portStream;
 int     posB, posC, posD, posE, posF, posG, posH, posI, posJ, posEnd;
-int     maximumRange = 200;
-int     minimumRange = 0;
-int     store = 20;
-int     rand = 0; // 250
-int     line = 12;
+int     maximumRange = 200; // same as in arduino sketch for data_a and data_b
+
+SignalFilter filter_data_a, filter_data_b; // signal filter
+float   minCutoff = 0.01;     // decrease this to get rid of slow speed jitter (0.05) 0.005
+float   beta      = 10.0;     // increase this to get rid of high speed lag (4) 10
+boolean signalFilter = true;  // set for filtering signal
+
 float   data_a, data_b, data_c, data_d, data_e, data_f, data_g, data_h, data_i, data_j;
-float   store_data_a, store_data_b;
-float   diff_a, diff_b;
+int     store = 10; // for moving average
 float[] int_data_a = new float[store];
 float[] int_data_b = new float[store];
 float   int_a, int_b;
-float   val_data_ab;
-String  data;
 int     int_cyc;
+
 int     time, cycle;
-float   y_ab, y_k, m, int_y_ab, int_y_k, k, int_x;
-boolean on;
-boolean run;
+
+int     rand = 0; // 250
+int     line = 12;
+int     line_bottom = 55;
+float   y_ab, y_k, m, int_y_ab, int_y_k, k, int_x; // for graphic callculation
+boolean on, run;
 
 void setup() {
   //myPort = new Serial(this, "/dev/ttyACM0", 9600); // Port in Raspbian
-  myPort = new Serial(this, "COM6", 9600);           // Port in Windows
+  myPort = new Serial(this, "COM8", 9600);           // Port in Windows
   myPort.bufferUntil('\n');
   surface.setResizable(true);
+  if (signalFilter) {
+    filter_data_a = new SignalFilter(this);
+    filter_data_b = new SignalFilter(this);
+  }
   //fullScreen();
   size(1920, 1080);
   frameRate(120);
@@ -45,13 +52,12 @@ void setup() {
 
 void draw() {
   background(0);
-  if (myPort.available() > 0 && portStream.charAt(0) == 'a') {
-    stream();
-  }
+  if (myPort.available() > 0 && portStream.charAt(0) == 'a') {stream();}
   regulate();
   perspect();
   projection();
   control();
+  delay(20);
 }
 
 void serialEvent(Serial myPort) {
@@ -69,35 +75,37 @@ void stream() {
   posI = portStream.indexOf('i');
   posJ = portStream.indexOf('j');
   posEnd = portStream.indexOf('#');
-  data_a = float(portStream.substring(1, posB));          // sensor A
-  data_b = float(portStream.substring(posB + 1, posC));   // sensor B
-  data_c = float(portStream.substring(posC + 1, posD));   // set perspective
-  data_d = float(portStream.substring(posD + 1, posE));   // set max top
-  data_e = float(portStream.substring(posE + 1, posF));   // set motor power
-  data_f = float(portStream.substring(posF + 1, posG));   // set time run and pause
-  data_g = float(portStream.substring(posG + 1, posH));   // time left
-  data_h = float(portStream.substring(posH + 1, posI));   // toggle on
-  data_i = float(portStream.substring(posI + 1, posJ));   // toggle on
-  data_j = float(portStream.substring(posJ + 1, posEnd)); // time run or pause
+  data_a = float(portStream.substring(1, posB));               // sensor A
+  data_b = float(portStream.substring(posB + 1, posC));        // sensor B
+  data_c = float(portStream.substring(posC + 1, posD));        // set perspective
+  data_d = float(portStream.substring(posD + 1, posE));        // set max top
+  data_e = float(portStream.substring(posE + 1, posF));        // set motor power
+  data_f = float(portStream.substring(posF + 1, posG));        // set time run and pause
+  data_g = float(portStream.substring(posG + 1, posH));        // time left
+  data_h = float(portStream.substring(posH + 1, posI));        // toggle on
+  data_i = float(portStream.substring(posI + 1, posJ));        // toggle on
+  data_j = float(portStream.substring(posJ + 1, posEnd));      // time run or pause
 
-  println(cycle + "ms", round(frameRate) + "fps", "a:" + round(data_a), "b:" + round(data_b), "c:" + round(data_c), "d:" + round(data_d), "e:" + round(data_e), "f:" + round(data_f), "g:" + round(data_g), "h:" + round(data_h), "i:" + round(data_i), "j:" + round(data_j));
+  println("a:" + data_a, "b:" + data_b, "c:" + round(data_c), "d:" + round(data_d), "e:" + round(data_e), "f:" + round(data_f), "g:" + round(data_g), "h:" + round(data_h), "i:" + round(data_i), "j:" + round(data_j), cycle + "ms", round(frameRate) + "fps");
 
-  { // clean data
+  { // clean and map data
     if (Float.isNaN(data_a)) {
       System.err.println("data_a : NaN");
-      data_a = minimumRange;
+      data_a = 0;
     } else {
-      data_a = map(data_a, minimumRange, maximumRange, 0, height);
+      if (signalFilter) {data_a = filter_data_a.filterUnitFloat(data_a / 1000) * 1000;}
+      data_a = map(data_a, 0, maximumRange, 0, height); // map data
     }
     if (Float.isNaN(data_b)) {
       System.err.println("data_b : NaN");
-      data_b = minimumRange;
+      data_b = 0;
     } else {
-      data_b = map(data_b, minimumRange, maximumRange, 0, height);
+      if (signalFilter) {data_b = filter_data_b.filterUnitFloat(data_b / 1000) * 1000;}
+      data_b = map(data_b, 0, maximumRange, 0, height); // map data
     }
     if (Float.isNaN(data_c)) {
       System.err.println("data_c : NaN");
-      data_c = minimumRange;
+      data_c = 0;
     } else {
       data_c = map(data_c, 0, 1023, 0, height);
     }
@@ -116,8 +124,8 @@ void regulate() {
     int_a += int_data_a[i];
     int_b += int_data_b[i];
   }
-  int_a = int_a / (int_data_a.length + 1);
-  int_b = int_b / (int_data_b.length + 1);
+  int_a = (int_a / (int_data_a.length + 1));
+  int_b = (int_b / (int_data_b.length + 1));
   //println(int_a, int_b);
 }
 
@@ -127,7 +135,7 @@ void perspect() {
   y_ab = (data_a + data_b) / 2;
   y_k = y_ab - m * y_ab; 
   int_y_ab = (int_a + int_b) / 2;
-  int_y_k = int_y_ab - m * int_y_ab;  
+  int_y_k = int_y_ab - m * int_y_ab;
   //println(m, y_k);
 }
 
@@ -144,8 +152,8 @@ void projection() {
     endShape();
   } else if (data_j == 0) {
     int_x = map(data_g, 0, data_f, 0, width / 2);
-    line(width / 2, height - 50, width / 2 - int(int_x), height - 50);
-    line(width / 2, height - 50, width / 2 + int(int_x), height - 50);
+    line(width / 2, height - line_bottom, width / 2 - int(int_x), height - line_bottom);
+    line(width / 2, height - line_bottom, width / 2 + int(int_x), height - line_bottom);
   }
 
   fill(0);
