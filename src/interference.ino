@@ -22,6 +22,7 @@ long filterWeight = 100; // 100%
 ExponentialFilter<long> ADCFilter(filterWeight, 0); // (weight, initial value)
 bool filterADC = true;
 bool filterSpike = true;
+bool filterStuck = true;
 
 const int def_max_top = A0;       // potentiometer 0 -> define max top for stop motors
 const int def_perspective = A2;   // potentiometer 3 -> define perspective for graphic
@@ -100,6 +101,75 @@ class spikeFilter {
 float setMax = 10;
 spikeFilter spikeFilterA = spikeFilter(setMax);
 spikeFilter spikeFilterB = spikeFilter(setMax);
+
+class stuckFilter {  
+  private:
+  float dataRange, dataMin, dataMax, dataIn, dataSafed = 0;
+  bool stucked = false;
+  int pauseCycles, cntPauseCycles, dataSafedSpan, cntDataSafed;
+
+  int lengthOfDataAverage = 20; // 50 
+  float dataAverage[20];
+  float dataAverageEff;
+  int cntDataAverage = 0, cntDataSafedSpan = 0;
+
+  public:
+  stuckFilter(int pauseCycles, float dataRange, float dataMin, float dataMax, int dataSafedSpan) {
+    this->pauseCycles = pauseCycles;
+    this->dataRange = dataRange;
+    this->dataMin = dataMin;
+    this->dataMax = dataMax;
+    this->dataSafedSpan = dataSafedSpan;
+  } 
+  
+  void filter(float dataIn, bool serialprint) {
+    dataAverage[cntDataAverage] = dataIn;
+    cntDataAverage++;
+    if (cntDataAverage == lengthOfDataAverage - 1) {
+      cntDataAverage = 0;      
+    }
+    for (int i = 0; i < lengthOfDataAverage; i++) {
+      dataAverageEff += dataAverage[i];
+    }   
+    dataAverageEff = dataAverageEff / lengthOfDataAverage;  
+    //if (serialprint) {Serial.println(dataAverageEff);}
+    
+    if (dataIn > dataMin && dataIn < dataMax) {
+      if (abs(dataIn - dataAverageEff) < dataRange) {
+        cntDataSafedSpan++;
+        //if (serialprint) {Serial.println(cntDataSafedSpan);}
+        if (cntDataSafedSpan == dataSafedSpan) {                          
+          stucked = true;
+          cntDataSafedSpan = 0;
+        }
+      } else {
+        cntDataSafedSpan = 0;
+      }        
+    } 
+
+    if (stucked == true) {
+      cntPauseCycles++;
+      // if (serialprint) {Serial.println(cntPauseCycles);}    
+    }
+    
+    if (cntPauseCycles >= pauseCycles) {
+      cntPauseCycles = 0;
+      stucked = false;    
+    }    
+  }
+   
+  bool isStucked() {
+    return stucked;
+  }  
+};
+
+int pauseCycles = 100; // if stocked pause n cycles
+int dataSafedSpan = 20; // cycles between data points
+float dataRange = 5;
+float dataMin = 20;
+float dataMax = 180;
+stuckFilter stuckFilterA = stuckFilter(pauseCycles, dataRange, dataMin, dataMax, dataSafedSpan);
+stuckFilter stuckFilterB = stuckFilter(pauseCycles, dataRange, dataMin, dataMax, dataSafedSpan);
 
 void setup() {
   pinMode(TRIG_A, OUTPUT);
@@ -197,6 +267,10 @@ void sensors() {
     data_dist_a = dist_a;
     if (filterSpike){spikeFilterA.filter(data_dist_a); data_dist_a = spikeFilterA.getData();}
     if (filterADC){ADCFilter.Filter(data_dist_a);}
+    if (filterStuck){stuckFilterA.filter(data_dist_a, true);}
+    if (stuckFilterA.isStucked() == true) {
+      Serial.println("A is stucked.");
+    }
   }
 
   digitalWrite(TRIG_B, HIGH);
@@ -214,18 +288,22 @@ void sensors() {
     data_dist_b = dist_b;
     if (filterSpike){spikeFilterB.filter(data_dist_b); data_dist_b = spikeFilterB.getData();}
     if (filterADC){ADCFilter.Filter(data_dist_b);}
+    if (filterStuck){stuckFilterB.filter(data_dist_b, true);}
+    if (stuckFilterB.isStucked() == true) {
+      Serial.println("B is stucked.");
+    }
   }
 }
 
 void actors() {
   { // power motor depends to distance
-    if (data_dist_a <= max_top && val_def_max_top > 0) {
+    if (data_dist_a <= max_top && val_def_max_top > 0 && !stuckFilterA.isStucked()) {
       val_fan_a = map(data_dist_a, 0, max_top, 255, val_power);
       }
     if (data_dist_a > max_top || val_def_max_top == 0) {
         val_fan_a = 0;
     }
-    if (data_dist_b <= max_top && val_def_max_top > 0) {
+    if (data_dist_b <= max_top && val_def_max_top > 0 && !stuckFilterB.isStucked()) {
         val_fan_b = map(data_dist_b, 0, max_top, 255, val_power);
     }
     if (data_dist_b > max_top || val_def_max_top == 0) {
