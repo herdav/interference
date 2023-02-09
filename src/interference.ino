@@ -23,26 +23,31 @@ ExponentialFilter<long> ADCFilter(filterWeight, 0); // (weight, initial value)
 bool filterADC = true;
 bool filterSpike = true;
 bool filterStuck = true;
+bool printErrStuck = false;
+bool runA = true;
+bool runB = true;
 
 const int def_max_top = A0;       // potentiometer 0 -> define max top for stop motors
 const int def_perspective = A2;   // potentiometer 3 -> define perspective for graphic
 const int def_power = A1;         // potentiometer 1 -> define power motors
 const int def_runtime = A3;       // potentiometer 2 -> define run time_current
 
-int maximumRange = 200;
+int maximumRange = 200;           // 200
 int minimumRange = 2;             // 2
 float dist_a, dist_b;
 float dura_a, dura_b;
 int data_dist_a;                  // data_a
 int data_dist_b;                  // data_b
 
-int val_fan_a, val_fan_b;
+int val_fan_a = 0;
+int val_fan_b = 0;
 int max_top;                      // data_d
 int val_def_max_top;
 
 int val_def_perspective;          // data_c
 int val_def_power;                
 int val_power;                    // data_e
+int def_max_power = 220;          // define max motor power 
 int val_def_runtime;             
 bool val_on;                      // data_h
 bool val_on_safed;
@@ -225,7 +230,7 @@ void control() {
   }
   { // power motors
     val_def_power = analogRead(def_power);
-    val_power = map(val_def_power, 0, 1023, 0, 255);
+    val_power = map(val_def_power, 0, 1023, 0, def_max_power);
   }
   { // togle switch
     val_on = digitalRead(ON);
@@ -252,62 +257,73 @@ void control() {
 }
 
 void sensors() {
-  digitalWrite(TRIG_A, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_A, LOW);
-  dura_a = pulseIn(ECHO_A, HIGH);
-  dist_a = dura_a / 58.2;
+  if (runA) {
+    digitalWrite(TRIG_A, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_A, LOW);
+    dura_a = pulseIn(ECHO_A, HIGH);
+    dist_a = dura_a / 58.2;
 
-  if (dist_a >= maximumRange) {
-    dist_a = maximumRange;
-  }
-  if (dist_a <= minimumRange) {
-    dist_a = 0;
-  } else {
-    data_dist_a = dist_a;
-    if (filterSpike){spikeFilterA.filter(data_dist_a); data_dist_a = spikeFilterA.getData();}
-    if (filterADC){ADCFilter.Filter(data_dist_a);}
-    if (filterStuck){stuckFilterA.filter(data_dist_a, true);}
-    if (stuckFilterA.isStucked() == true) {
-      Serial.println("A is stucked.");
+    if (dist_a >= maximumRange) {
+      dist_a = maximumRange;
     }
+    if (dist_a <= minimumRange) {
+      dist_a = 0;
+    } else {
+      data_dist_a = dist_a;
+      if (filterSpike){spikeFilterA.filter(data_dist_a); data_dist_a = spikeFilterA.getData();}
+      if (filterADC){ADCFilter.Filter(data_dist_a);}
+      if (filterStuck){stuckFilterA.filter(data_dist_a, true);}
+      if (stuckFilterA.isStucked()) {
+        if (printErrStuck) {Serial.println("A is stucked.");}
+      }
+    } 
   }
+  if (runB) {  
+    digitalWrite(TRIG_B, HIGH);
+    delayMicroseconds(10);
+    digitalWrite(TRIG_B, LOW);
+    dura_b = pulseIn(ECHO_B, HIGH);
+    dist_b = dura_b / 58.2;
 
-  digitalWrite(TRIG_B, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(TRIG_B, LOW);
-  dura_b = pulseIn(ECHO_B, HIGH);
-  dist_b = dura_b / 58.2;
-
-  if (dist_b >= maximumRange) {
-    dist_b = maximumRange;
-  }
-  if (dist_b <= minimumRange) {
-    dist_b = 0;
-  } else {
-    data_dist_b = dist_b;
-    if (filterSpike){spikeFilterB.filter(data_dist_b); data_dist_b = spikeFilterB.getData();}
-    if (filterADC){ADCFilter.Filter(data_dist_b);}
-    if (filterStuck){stuckFilterB.filter(data_dist_b, true);}
-    if (stuckFilterB.isStucked() == true) {
-      Serial.println("B is stucked.");
+    if (dist_b >= maximumRange) {
+      dist_b = maximumRange;
+    }
+    if (dist_b <= minimumRange) {
+      dist_b = 0;
+    } else {
+      data_dist_b = dist_b;
+      if (filterSpike){spikeFilterB.filter(data_dist_b); data_dist_b = spikeFilterB.getData();}
+      if (filterADC){ADCFilter.Filter(data_dist_b);}
+      if (filterStuck){stuckFilterB.filter(data_dist_b, true);}
+      if (stuckFilterB.isStucked()) {
+        if (printErrStuck) {Serial.println("B is stucked.");}
+      }
     }
   }
 }
 
 void actors() {
   { // power motor depends to distance
-    if (data_dist_a <= max_top && val_def_max_top > 0 && !stuckFilterA.isStucked()) {
-      val_fan_a = map(data_dist_a, 0, max_top, 255, val_power);
-      }
-    if (data_dist_a > max_top || val_def_max_top == 0) {
+    if (runA) {
+      if (data_dist_a <= max_top && val_def_max_top > 0 && !stuckFilterA.isStucked()) {
+        val_fan_a = map(data_dist_a, 0, max_top, def_max_power, val_power);
+      } else {
         val_fan_a = 0;
+      }
+      if (data_dist_a > max_top || val_def_max_top == 0) {
+          val_fan_a = 0;
+      }
     }
-    if (data_dist_b <= max_top && val_def_max_top > 0 && !stuckFilterB.isStucked()) {
-        val_fan_b = map(data_dist_b, 0, max_top, 255, val_power);
-    }
-    if (data_dist_b > max_top || val_def_max_top == 0) {
+    if (runB) {
+      if (data_dist_b <= max_top && val_def_max_top > 0 && !stuckFilterB.isStucked()) {
+          val_fan_b = map(data_dist_b, 0, max_top, def_max_power, val_power);
+      } else {
         val_fan_b = 0;
+      }
+      if (data_dist_b > max_top || val_def_max_top == 0) {
+          val_fan_b = 0;
+      }
     }
   }
   /*// on off motor
