@@ -37,7 +37,7 @@ boolean on, run;
 
 void setup() {
   //myPort = new Serial(this, "/dev/ttyACM0", 9600); // Port in Raspbian
-  myPort = new Serial(this, "COM8", 9600);           // Port in Windows
+  myPort = new Serial(this, "COM6", 9600);           // Port in Windows
   myPort.bufferUntil('\n');
   surface.setResizable(true);
   if (signalFilter) {
@@ -204,15 +204,17 @@ void control() {
       text("Sensor B: " + round(data_b) + "/" + height + "px", 40, 180);
       text("Perspective: " + round(data_c), 40, 240);
       text("Max Top: " + round(data_d) + "/200", 40, 300);
-      text("Power: " + round(data_e) + "/255", 40, 360);
+      text("Power: " + round(data_e), 40, 360);
       text("Run Time Set: " + round(data_f / 1000) + "s", 40, 420);
       text("Run Time Left: " + round(data_g / 1000) + "s", 40, 480);
-      if (data_j == 1) {fill(0,255,0); text("[runs]", 320, 480);}
+      if (data_j == 1 && data_i == 1) {fill(0,255,0); text("[runs]", 320, 480);}
       else {fill(255,0,0); text("[paused]", 320, 480);}
       fill(255,255,255);
       if (data_h == 1) {text("Toggle: On", 40, 540);}
       else if (data_i == 1) {text("Toggle: Run", 40, 540);}
       text(cycle + "ms " + round(frameRate) + "fps", 40, 600);
+
+      text("a:" + round(data_a) + " b:" + round(data_b) + " c:" + round(data_c) + " d:" + round(data_d) + " e:" + round(data_e) + " f:" + round(data_f) + " g:" + round(data_g) + " h:" + round(data_h) + " i:" + round(data_i) + " j:" + round(data_j), 40, height - 80);
     }
   }
   cycle = millis() - time;
